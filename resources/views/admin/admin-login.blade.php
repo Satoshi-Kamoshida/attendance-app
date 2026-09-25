@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     @vite(['resources/css/sanitize.css', 'resources/css/common.css', 'resources/css/admin/admin-login.css'])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+        rel="stylesheet">
     @yield('css')
 </head>
 
@@ -24,14 +27,14 @@
             <div class="login__heading">
                 <h1 class="login__heading--item">管理者ログイン</h1>
             </div>
-            <form class="form" action="/admin/login" method="post" novalidate>
+            <form class="form" action="/login" method="post" novalidate>
                 @csrf
                 <div class="form__group">
                     <label class="form__label" for="email">メールアドレス</label>
                     <input class="form__input" id="email" type="email" name="email" value="{{ old('email') }}">
                     <div class="form__error">
                         @error ('email')
-                        {{ $message }}
+                            {{ $message }}
                         @enderror
                     </div>
                 </div>
@@ -40,7 +43,7 @@
                     <input class="form__input" id="password" type="password" name="password">
                     <div class="form__error">
                         @error ('password')
-                        {{ $message }}
+                            {{ $message }}
                         @enderror
                     </div>
                 </div>
@@ -51,4 +54,5 @@
         </div>
     </main>
 </body>
+
 </html>
