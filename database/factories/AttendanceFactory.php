@@ -9,13 +9,30 @@ class AttendanceFactory extends Factory
 {
     public function definition(): array
     {
+        $attendanceStatus = fake()->randomElement([
+            'not_started',
+            'working',
+            'finished',
+        ]);
+
         return [
             'user_id' => User::factory(),
             'date' => fake()->date(),
-            'clock_in' => fake()->dateTimeBetween('06:00:00', '09:00:00')->format('H:i:s'),
-            'clock_out' => fake()->boolean(80)
-                ? fake()->dateTimeBetween('17:00:00', '20:00:00')->format('H:i:s')
-                : null,
+
+            'clock_in' => match ($attendanceStatus) {
+                'not_started' => null,
+                'working', 'finished' => fake()
+                    ->dateTimeBetween('06:00:00', '09:00:00')
+                    ->format('H:i:s'),
+            },
+
+            'clock_out' => match ($attendanceStatus) {
+                'not_started', 'working' => null,
+                'finished' => fake()
+                    ->dateTimeBetween('17:00:00', '20:00:00')
+                    ->format('H:i:s'),
+            },
+
             'comment' => null,
         ];
     }

@@ -16,16 +16,13 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->date('date');
             $table->unique(['user_id', 'date']);
-            $table->time('clock_in');
+            $table->time('clock_in')->nullable();
             $table->time('clock_out')->nullable();
             $table->text('comment')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('attendances');
