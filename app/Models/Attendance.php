@@ -10,6 +10,7 @@ class Attendance extends Model
     use HasFactory;
 
     protected $fillable = [
+        'date',
         'clock_in',
         'clock_out',
         'comment',
