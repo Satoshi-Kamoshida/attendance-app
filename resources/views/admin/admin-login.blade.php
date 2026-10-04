@@ -27,7 +27,7 @@
             <div class="login__heading">
                 <h1 class="login__heading--item">管理者ログイン</h1>
             </div>
-            <form class="form" action="/login" method="post" novalidate>
+            <form class="form" action="/admin/login" method="post" novalidate>
                 @csrf
                 <div class="form__group">
                     <label class="form__label" for="email">メールアドレス</label>
