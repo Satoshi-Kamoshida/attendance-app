@@ -6,6 +6,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Http\Requests\AuthRequest;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -17,7 +18,6 @@ use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
 use Laravel\Fortify\Fortify;
-use App\Http\Requests\AuthRequest;
 use Laravel\Fortify\Http\Requests\LoginRequest;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -32,14 +32,15 @@ class FortifyServiceProvider extends ServiceProvider
         {
             public function toResponse($request)
             {
-                $user = auth()->user();
-
                 if ($request->is('admin/login')) {
+                    $request->session()->put('auth_login_type', 'admin');
+
                     return redirect('/admin/attendance/list');
                 }
 
-                return redirect('/attendance');
+                $request->session()->put('auth_login_type', 'user');
 
+                return redirect('/attendance');
             }
         });
 
@@ -47,7 +48,15 @@ class FortifyServiceProvider extends ServiceProvider
         {
             public function toResponse($request)
             {
-                return redirect('/attendance');
+                $loginType = $request->session()->get('auth_login_type');
+
+                $request->session()->forget('auth_login_type');
+
+                if ($loginType === 'admin') {
+                    return redirect('/admin/login');
+                }
+
+                return redirect('/login');
             }
         });
     }

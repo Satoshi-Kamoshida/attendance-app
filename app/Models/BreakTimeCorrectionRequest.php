@@ -10,6 +10,8 @@ class BreakTimeCorrectionRequest extends Model
     use HasFactory;
 
     protected $fillable = [
+        'attendance_correction_request_id',
+        'break_time_id',
         'new_break_in',
         'new_break_out',
     ];

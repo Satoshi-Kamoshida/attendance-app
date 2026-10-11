@@ -11,13 +11,6 @@ use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 
 class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
-    /**
-     * Validate and update the given user's profile information.
-     *
-     * @param  array<string, string>  $input
-     *
-     * @throws ValidationException
-     */
     public function update(User $user, array $input): void
     {
         Validator::make($input, [
@@ -43,11 +36,6 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         }
     }
 
-    /**
-     * Update the given verified user's profile information.
-     *
-     * @param  array<string, string>  $input
-     */
     protected function updateVerifiedUser(User $user, array $input): void
     {
         $user->forceFill([

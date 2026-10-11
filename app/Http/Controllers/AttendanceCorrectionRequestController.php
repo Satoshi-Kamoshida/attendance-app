@@ -1,0 +1,312 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\AdminAttendanceUpdateRequest;
+use App\Http\Requests\StoreAttendanceCorrectionRequest;
+use App\Models\Attendance;
+use App\Models\AttendanceCorrectionRequest;
+use App\Models\BreakTimeCorrectionRequest;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class AttendanceCorrectionRequestController extends Controller
+{
+    public function store(Request $request, $id)
+    {
+        $user = auth()->user();
+
+        if ($user->admin_status) {
+            $adminRequest = app(AdminAttendanceUpdateRequest::class);
+
+            return $this->adminUpdate($adminRequest, $id);
+        }
+
+        $userRequest = app(StoreAttendanceCorrectionRequest::class);
+
+        return $this->storeCorrection($userRequest, $id);
+    }
+
+    public function storeCorrection(
+        StoreAttendanceCorrectionRequest $request,
+        $id
+    ) {
+        /** @var User $user */
+        $user = auth()->user();
+
+        $attendance = $user->attendances()
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $hasPendingApplication = AttendanceCorrectionRequest::where(
+            'attendance_id',
+            $attendance->id
+        )
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingApplication) {
+            abort(403, '承認待ちのため修正できません。');
+        }
+
+        $validated = $request->validated();
+
+        $correctionRequest = AttendanceCorrectionRequest::create([
+            'attendance_id' => $attendance->id,
+            'new_clock_in' => $validated['new_clock_in'] ?? null,
+            'new_clock_out' => $validated['new_clock_out'] ?? null,
+            'comment' => $validated['comment'],
+            'status' => 'pending',
+        ]);
+
+        $breakTimes = $attendance->breakTimes()
+            ->orderBy('id')
+            ->get();
+
+        foreach ($validated['new_break_in'] ?? [] as $index => $newBreakIn) {
+            $newBreakOut = $validated['new_break_out'][$index] ?? null;
+
+            $breakTimeId = $breakTimes->get($index)?->id;
+
+            if (empty($newBreakIn) && empty($newBreakOut)
+                && $breakTimeId === null) {
+                continue;
+            }
+
+            BreakTimeCorrectionRequest::create([
+                'attendance_correction_request_id' => $correctionRequest->id,
+                'break_time_id' => $breakTimeId,
+                'new_break_in' => $newBreakIn,
+                'new_break_out' => $newBreakOut,
+            ]);
+        }
+
+        return redirect('/stamp_correction_request/list');
+    }
+
+    public function index()
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if ($user->admin_status) {
+            return $this->adminIndex();
+        }
+
+        $applications = AttendanceCorrectionRequest::whereHas(
+            'attendance',
+            function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            }
+        )
+            ->with('attendance')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $formattedApplications = [];
+
+        foreach ($applications as $application) {
+            $formattedApplications[] = [
+                'id' => $application->id,
+                'approval_status' => $application->status === 'pending'
+                    ? '承認待ち'
+                    : '承認済み',
+                'date' => $application->attendance->date,
+                'comment' => $application->comment,
+                'application_date' => $application->created_at,
+            ];
+        }
+
+        return view(
+            'user.user-application-list',
+            compact('user', 'formattedApplications')
+        );
+    }
+
+    public function adminIndex()
+    {
+        $applications = AttendanceCorrectionRequest::with([
+            'attendance.user',
+        ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view(
+            'admin.admin-application-list',
+            compact('applications')
+        );
+    }
+
+    public function adminUpdate(AdminAttendanceUpdateRequest $request, $id)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        $attendance = Attendance::with(['breakTimes' => function ($query) {
+            $query->orderBy('id');
+        }, ])
+            ->findOrFail($id);
+
+        $validated = $request->validated();
+
+        $attendance->clock_in = $validated['new_clock_in'] ?? null;
+        $attendance->clock_out = $validated['new_clock_out'] ?? null;
+        $attendance->comment = $validated['comment'];
+
+        $attendance->save();
+
+        $breakTimes = $attendance->breakTimes;
+
+        foreach ($validated['new_break_in'] ?? [] as $index => $newBreakIn) {
+
+            $newBreakOut = $validated['new_break_out'][$index] ?? null;
+
+            $breakTime = $breakTimes->get($index);
+
+            if (empty($newBreakIn) && empty($newBreakOut)) {
+                if ($breakTime) {
+                    $breakTime->delete();
+                }
+                continue;
+            }
+
+            if ($breakTime) {
+
+                $breakTime->break_in = $newBreakIn;
+                $breakTime->break_out = $newBreakOut;
+                $breakTime->save();
+
+                continue;
+            }
+
+            $attendance->breakTimes()->create([
+                'break_in' => $newBreakIn,
+                'break_out' => $newBreakOut,
+            ]);
+        }
+
+        return redirect('/admin/attendance/list');
+    }
+
+    public function show($id)
+    {
+        $user = auth()->user();
+
+        abort_unless($user->admin_status, 403);
+
+        $application = AttendanceCorrectionRequest::with([
+            'attendance.user',
+            'breakTimeCorrectionRequests',
+        ])->findOrFail($id);
+
+        $user = $application->attendance->user;
+
+        return view(
+            'admin.admin-application-detail',
+            compact('application', 'user')
+        );
+    }
+
+    public function update($id)
+    {
+        $user = auth()->user();
+
+        abort_unless($user->admin_status, 403);
+
+        DB::transaction(function () use ($id) {
+            $application = AttendanceCorrectionRequest::with([
+                'attendance.breakTimes',
+                'breakTimeCorrectionRequests',
+            ])->findOrFail($id);
+
+            abort_unless($application->status === 'pending', 409);
+
+            $attendance = $application->attendance;
+
+            $attendance->clock_in = $application->new_clock_in;
+            $attendance->clock_out = $application->new_clock_out;
+            $attendance->save();
+
+            $breakRequests = $application->breakTimeCorrectionRequests;
+
+            $requestedBreakIds = $breakRequests
+                ->pluck('break_time_id')
+                ->filter()
+                ->all();
+
+            foreach ($attendance->breakTimes as $breakTime) {
+                if (! in_array($breakTime->id, $requestedBreakIds)) {
+                    BreakTimeCorrectionRequest::where(
+                        'break_time_id',
+                        $breakTime->id
+                    )->update([
+                        'break_time_id' => null,
+                    ]);
+
+                    $breakTime->delete();
+                }
+            }
+
+            foreach ($breakRequests as $breakRequest) {
+                $newBreakIn = $breakRequest->new_break_in;
+                $newBreakOut = $breakRequest->new_break_out;
+
+                if ($breakRequest->break_time_id !== null) {
+                    $breakTime = $attendance->breakTimes
+                        ->firstWhere('id', $breakRequest->break_time_id);
+
+                    abort_if($breakTime === null, 409);
+
+                    if (empty($newBreakIn) && empty($newBreakOut)) {
+                        BreakTimeCorrectionRequest::where(
+                            'break_time_id',
+                            $breakTime->id
+                        )->update([
+                            'break_time_id' => null,
+                        ]);
+
+                        $breakTime->delete();
+
+                        continue;
+                    }
+
+                    $breakTime->break_in = $newBreakIn;
+                    $breakTime->break_out = $newBreakOut;
+                    $breakTime->save();
+
+                    continue;
+                }
+
+                if (empty($newBreakIn) && empty($newBreakOut)) {
+                    continue;
+                }
+
+                $attendance->breakTimes()->create([
+                    'break_in' => $newBreakIn,
+                    'break_out' => $newBreakOut,
+                ]);
+            }
+
+            $application->status = 'approved';
+            $application->save();
+        });
+
+        return redirect('/stamp_correction_request/list');
+    }
+
+    public function userShowApplication($id)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        $application = AttendanceCorrectionRequest::whereHas(
+            'attendance',
+            function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            }
+        )->findOrFail($id);
+
+        return redirect('/attendance/'.$application->attendance_id);
+    }
+}
