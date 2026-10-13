@@ -7,13 +7,14 @@ use App\Models\AttendanceCorrectionRequest;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AttendanceController extends Controller
 {
     public function create()
     {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
 
         $formattedDate = now()->format('Y/m/d');
         $formattedTime = now()->format('H:i');
@@ -54,7 +55,7 @@ class AttendanceController extends Controller
     public function store(Request $request)
     {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
 
         $attendance = $user->attendances()
             ->where('date', today())
@@ -104,7 +105,7 @@ class AttendanceController extends Controller
         $nextMonth = $date->copy()->addMonth()->format('Y-m');
 
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
 
         $attendances = $user->attendances()
             ->whereYear('date', $date->year)
@@ -144,8 +145,10 @@ class AttendanceController extends Controller
 
             $totalTimeFormatted = null;
 
-            if ($attendance->clock_out !== null) {
-
+            if (
+                $attendance->clock_in !== null
+                && $attendance->clock_out !== null
+            ) {
                 $clockIn = Carbon::parse($attendance->clock_in);
                 $clockOut = Carbon::parse($attendance->clock_out);
 
@@ -153,14 +156,16 @@ class AttendanceController extends Controller
 
                 $totalTime = $totalMinutes - $totalBreakMinutes;
 
-                $hours = intdiv($totalTime, 60);
-                $minutes = $totalTime % 60;
+                if ($totalTime >= 0) {
+                    $hours = intdiv($totalTime, 60);
+                    $minutes = $totalTime % 60;
 
-                $totalTimeFormatted = sprintf(
-                    '%d:%02d',
-                    $hours,
-                    $minutes
-                );
+                    $totalTimeFormatted = sprintf(
+                        '%d:%02d',
+                        $hours,
+                        $minutes
+                    );
+                }
             }
 
             $formattedAttendanceRecords[] = [
@@ -183,7 +188,7 @@ class AttendanceController extends Controller
 
     public function adminIndex(Request $request)
     {
-        abort_unless(auth()->user()->admin_status, 403);
+        abort_unless(Auth::guard('web')->user()?->admin_status, 403);
         $date = Carbon::parse(
             $request->query('date', now()->format('Y-m-d'))
         );
@@ -257,7 +262,9 @@ class AttendanceController extends Controller
     public function show($id)
     {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
+
+        abort_unless($user, 403);
 
         if ($user->admin_status) {
 
@@ -268,8 +275,8 @@ class AttendanceController extends Controller
 
             foreach ($attendance->breakTimes as $breakTime) {
                 $breaks[] = [
-                    'break_in' => $breakTime->break_in? Carbon::parse($breakTime->break_in)->format('H:i'): '',
-                    'break_out' => $breakTime->break_out? Carbon::parse($breakTime->break_out)->format('H:i'): '',
+                    'break_in' => $breakTime->break_in ? Carbon::parse($breakTime->break_in)->format('H:i') : '',
+                    'break_out' => $breakTime->break_out ? Carbon::parse($breakTime->break_out)->format('H:i') : '',
                 ];
 
             }
@@ -360,7 +367,7 @@ class AttendanceController extends Controller
 
     public function staffAttendance(Request $request, $id)
     {
-        abort_unless(auth()->user()->admin_status, 403);
+        abort_unless(Auth::guard('web')->user()?->admin_status, 403);
 
         $user = User::where('admin_status', false)
             ->findOrFail($id);

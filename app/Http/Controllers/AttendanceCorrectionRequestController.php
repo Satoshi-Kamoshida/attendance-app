@@ -8,7 +8,9 @@ use App\Models\Attendance;
 use App\Models\AttendanceCorrectionRequest;
 use App\Models\BreakTimeCorrectionRequest;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceCorrectionRequestController extends Controller
@@ -33,7 +35,7 @@ class AttendanceCorrectionRequestController extends Controller
         $id
     ) {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
 
         $attendance = $user->attendances()
             ->where('id', $id)
@@ -88,7 +90,9 @@ class AttendanceCorrectionRequestController extends Controller
     public function index()
     {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
+
+        abort_unless($user, 403);
 
         if ($user->admin_status) {
             return $this->adminIndex();
@@ -141,7 +145,8 @@ class AttendanceCorrectionRequestController extends Controller
     public function adminUpdate(AdminAttendanceUpdateRequest $request, $id)
     {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
+        abort_unless($user?->admin_status, 403);
 
         $attendance = Attendance::with(['breakTimes' => function ($query) {
             $query->orderBy('id');
@@ -168,6 +173,7 @@ class AttendanceCorrectionRequestController extends Controller
                 if ($breakTime) {
                     $breakTime->delete();
                 }
+
                 continue;
             }
 
@@ -191,28 +197,37 @@ class AttendanceCorrectionRequestController extends Controller
 
     public function show($id)
     {
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
 
-        abort_unless($user->admin_status, 403);
+        abort_unless($user?->admin_status, 403);
 
         $application = AttendanceCorrectionRequest::with([
             'attendance.user',
             'breakTimeCorrectionRequests',
         ])->findOrFail($id);
 
+        if ($application->new_clock_in !== null) {
+            $application->new_clock_in = Carbon::parse(
+                $application->new_clock_in
+            )->format('H:i');
+        }
+
+        if ($application->new_clock_out !== null) {
+            $application->new_clock_out = Carbon::parse(
+                $application->new_clock_out
+            )->format('H:i');
+        }
+
         $user = $application->attendance->user;
 
-        return view(
-            'admin.admin-application-detail',
-            compact('application', 'user')
-        );
+        return view('admin.admin-application-detail', compact('application', 'user'));
+
     }
 
     public function update($id)
     {
-        $user = auth()->user();
-
-        abort_unless($user->admin_status, 403);
+        $user = Auth::guard('web')->user();
+        abort_unless($user?->admin_status, 403);
 
         DB::transaction(function () use ($id) {
             $application = AttendanceCorrectionRequest::with([
@@ -224,8 +239,24 @@ class AttendanceCorrectionRequestController extends Controller
 
             $attendance = $application->attendance;
 
-            $attendance->clock_in = $application->new_clock_in;
-            $attendance->clock_out = $application->new_clock_out;
+            $newClockIn = $application->new_clock_in;
+            $newClockOut = $application->new_clock_out;
+
+            if (empty($newClockIn)) {
+                abort(409, '出勤時刻が未入力のため、承認できません。');
+            }
+
+            if (! empty($newClockOut)) {
+                $clockIn = Carbon::parse($newClockIn);
+                $clockOut = Carbon::parse($newClockOut);
+
+                if ($clockOut->lessThanOrEqualTo($clockIn)) {
+                    abort(409, '退勤時刻は出勤時刻より後にしてください。');
+                }
+            }
+
+            $attendance->clock_in = $newClockIn;
+            $attendance->clock_out = $newClockOut;
             $attendance->save();
 
             $breakRequests = $application->breakTimeCorrectionRequests;
@@ -251,6 +282,22 @@ class AttendanceCorrectionRequestController extends Controller
             foreach ($breakRequests as $breakRequest) {
                 $newBreakIn = $breakRequest->new_break_in;
                 $newBreakOut = $breakRequest->new_break_out;
+
+                if (empty($newBreakIn) xor empty($newBreakOut)) {
+                    abort(409, '休憩時間の開始・終了が不整合なため、承認できません。');
+                }
+
+                if (! empty($newBreakIn) && ! empty($newBreakOut)) {
+                    $breakIn = Carbon::parse($newBreakIn);
+                    $breakOut = Carbon::parse($newBreakOut);
+
+                    if ($breakIn->greaterThanOrEqualTo($breakOut)) {
+                        abort(
+                            409,
+                            '休憩開始時刻は休憩終了時刻より前にしてください。'
+                        );
+                    }
+                }
 
                 if ($breakRequest->break_time_id !== null) {
                     $breakTime = $attendance->breakTimes
@@ -298,7 +345,7 @@ class AttendanceCorrectionRequestController extends Controller
     public function userShowApplication($id)
     {
         /** @var User $user */
-        $user = auth()->user();
+        $user = Auth::guard('web')->user();
 
         $application = AttendanceCorrectionRequest::whereHas(
             'attendance',
