@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BreakTimeCorrectionRequest extends Model
 {
@@ -16,12 +17,12 @@ class BreakTimeCorrectionRequest extends Model
         'new_break_out',
     ];
 
-    public function breakTime()
+    public function breakTime(): BelongsTo
     {
         return $this->belongsTo(BreakTime::class);
     }
 
-    public function attendanceCorrectionRequest()
+    public function attendanceCorrectionRequest(): BelongsTo
     {
         return $this->belongsTo(AttendanceCorrectionRequest::class);
     }

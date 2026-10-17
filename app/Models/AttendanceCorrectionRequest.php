@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class AttendanceCorrectionRequest extends Model
@@ -19,12 +21,12 @@ class AttendanceCorrectionRequest extends Model
         'status',
     ];
 
-    public function attendance()
+    public function attendance(): BelongsTo
     {
         return $this->belongsTo(Attendance::class);
     }
 
-    public function breakTimeCorrectionRequests()
+    public function breakTimeCorrectionRequests(): HasMany
     {
         return $this->hasMany(BreakTimeCorrectionRequest::class, 'attendance_correction_request_id');
     }
