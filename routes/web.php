@@ -28,7 +28,7 @@ Route::post('/admin/logout', function (Request $request) {
 
 Route::post('/register', [RegisteredUserController::class, 'store']);
 
-Route::middleware(['auth', 'user'])->group(function () {
+Route::middleware(['auth', 'verified', 'user'])->group(function () {
     Route::get('/attendance', [AttendanceController::class, 'create']);
     Route::post('/attendance', [AttendanceController::class, 'store']);
     Route::get('/attendance/list', [AttendanceController::class, 'index']);
@@ -46,6 +46,7 @@ Route::middleware('admin')->group(function () {
     Route::get('/stamp_correction_request/approve/{id}', [AttendanceCorrectionRequestController::class, 'show']);
     Route::post('/stamp_correction_request/approve/{id}', [AttendanceCorrectionRequestController::class, 'update']);
     Route::get('/admin/attendance/{id}', [AttendanceController::class, 'show'])->whereNumber('id');
+    Route::post('/export', [AttendanceController::class, 'export']);
 });
 
 Route::middleware('auth')->group(function () {

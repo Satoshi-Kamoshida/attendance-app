@@ -10,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttendanceController extends Controller
 {
@@ -466,5 +467,118 @@ class AttendanceController extends Controller
             'nextMonth',
             'formattedAttendanceRecords'
         ));
+    }
+
+    /**
+     * 指定スタッフ・指定月の勤怠をCSV形式で出力する。
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer'],
+            'year_month' => [
+                'required',
+                'date_format:Y-m',
+            ],
+        ]);
+
+        $user = User::where('admin_status', false)
+            ->findOrFail($validated['user_id']);
+
+        $date = Carbon::createFromFormat(
+            '!Y-m',
+            $validated['year_month']
+        );
+
+        $attendances = $user->attendances()
+            ->whereYear('date', $date->year)
+            ->whereMonth('date', $date->month)
+            ->with('breakTimes')
+            ->orderBy('date')
+            ->get();
+
+        $fileName = sprintf(
+            'attendance_%s_%s.csv',
+            $user->id,
+            $validated['year_month']
+        );
+
+        return response()->streamDownload(
+            function () use ($attendances) {
+                $stream = fopen('php://output', 'w');
+
+                fwrite($stream, "\xEF\xBB\xBF");
+
+                fputcsv($stream, [
+                    '日付',
+                    '出勤',
+                    '退勤',
+                    '休憩',
+                    '合計',
+                ]);
+
+                foreach ($attendances as $attendance) {
+                    $totalBreakMinutes = $attendance->breakTimes
+                        ->filter(function ($breakTime) {
+                            return $breakTime->break_in !== null
+                                && $breakTime->break_out !== null;
+                        })
+                        ->sum(function ($breakTime) {
+                            $breakIn = Carbon::parse($breakTime->break_in);
+                            $breakOut = Carbon::parse($breakTime->break_out);
+
+                            return $breakOut->diffInMinutes($breakIn);
+                        });
+
+                    $breakHours = intdiv($totalBreakMinutes, 60);
+                    $breakMinutes = $totalBreakMinutes % 60;
+
+                    $breakTimeFormatted = sprintf(
+                        '%d:%02d',
+                        $breakHours,
+                        $breakMinutes
+                    );
+
+                    $totalTimeFormatted = '';
+
+                    if (
+                        $attendance->clock_in !== null
+                        && $attendance->clock_out !== null
+                    ) {
+                        $clockIn = Carbon::parse($attendance->clock_in);
+                        $clockOut = Carbon::parse($attendance->clock_out);
+
+                        $totalMinutes = $clockOut->diffInMinutes($clockIn);
+                        $workMinutes = $totalMinutes - $totalBreakMinutes;
+
+                        if ($workMinutes >= 0) {
+                            $totalTimeFormatted = sprintf(
+                                '%d:%02d',
+                                intdiv($workMinutes, 60),
+                                $workMinutes % 60
+                            );
+                        }
+                    }
+
+                    fputcsv($stream, [
+                        Carbon::parse($attendance->date)->format('Y/m/d'),
+                        $attendance->clock_in
+                            ? Carbon::parse($attendance->clock_in)->format('H:i')
+                            : '',
+                        $attendance->clock_out
+                            ? Carbon::parse($attendance->clock_out)->format('H:i')
+                            : '',
+                        $breakTimeFormatted,
+                        $totalTimeFormatted,
+                    ]);
+                }
+
+                fclose($stream);
+            },
+            $fileName,
+            [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]
+        );
     }
 }

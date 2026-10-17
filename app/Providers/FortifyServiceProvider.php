@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\VerifyEmailViewResponse;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Requests\LoginRequest;
 
@@ -59,6 +60,17 @@ class FortifyServiceProvider extends ServiceProvider
                 return redirect('/login');
             }
         });
+
+        $this->app->instance(
+            VerifyEmailViewResponse::class,
+            new class implements VerifyEmailViewResponse
+            {
+                public function toResponse($request)
+                {
+                    return response()->view('auth.verify-email');
+                }
+            }
+        );
     }
 
     public function boot(): void
