@@ -33,11 +33,6 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::post('/attendance', [AttendanceController::class, 'store']);
     Route::get('/attendance/list', [AttendanceController::class, 'index']);
 
-    Route::post(
-        '/attendance/{id}',
-        [AttendanceCorrectionRequestController::class, 'store']
-    );
-
     Route::get(
         '/application/{id}',
         [AttendanceCorrectionRequestController::class, 'userShowApplication']
@@ -54,6 +49,7 @@ Route::middleware('admin')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/stamp_correction_request/list',[AttendanceCorrectionRequestController::class, 'index']);
+    Route::get('/stamp_correction_request/list', [AttendanceCorrectionRequestController::class, 'index']);
     Route::get('/attendance/{id}', [AttendanceController::class, 'show']);
+    Route::post('/attendance/{id}', [AttendanceCorrectionRequestController::class, 'store']);
 });
