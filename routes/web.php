@@ -45,11 +45,11 @@ Route::middleware('admin')->group(function () {
     Route::get('/admin/attendance/staff/{id}', [AttendanceController::class, 'staffAttendance']);
     Route::get('/stamp_correction_request/approve/{id}', [AttendanceCorrectionRequestController::class, 'show']);
     Route::post('/stamp_correction_request/approve/{id}', [AttendanceCorrectionRequestController::class, 'update']);
-    Route::get('/admin/attendance/{id}', [AttendanceController::class, 'show']);
+    Route::get('/admin/attendance/{id}', [AttendanceController::class, 'show'])->whereNumber('id');
 });
 
 Route::middleware('auth')->group(function () {
     Route::get('/stamp_correction_request/list', [AttendanceCorrectionRequestController::class, 'index']);
-    Route::get('/attendance/{id}', [AttendanceController::class, 'show']);
-    Route::post('/attendance/{id}', [AttendanceCorrectionRequestController::class, 'store']);
+    Route::get('/attendance/{id}', [AttendanceController::class, 'show'])->whereNumber('id');
+    Route::post('/attendance/{id}', [AttendanceCorrectionRequestController::class, 'store'])->whereNumber('id');
 });

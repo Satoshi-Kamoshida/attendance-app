@@ -6,12 +6,17 @@ use App\Models\Attendance;
 use App\Models\AttendanceCorrectionRequest;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AttendanceController extends Controller
 {
-    public function create()
+    /**
+     * 勤怠登録画面を表示し、当日の勤務状態を設定する。
+     */
+    public function create(): View
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
@@ -52,7 +57,10 @@ class AttendanceController extends Controller
         );
     }
 
-    public function store(Request $request)
+    /**
+     * 出勤・退勤・休憩の打刻を登録する。
+     */
+    public function store(Request $request): RedirectResponse
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
@@ -98,7 +106,10 @@ class AttendanceController extends Controller
         return redirect('/attendance');
     }
 
-    public function index(Request $request)
+    /**
+     * ログインユーザーの指定月の勤怠一覧を表示する。
+     */
+    public function index(Request $request): View
     {
         $date = Carbon::parse($request->query('date', now()->format('Y-m')));
         $previousMonth = $date->copy()->subMonth()->format('Y-m');
@@ -108,75 +119,69 @@ class AttendanceController extends Controller
         $user = Auth::guard('web')->user();
 
         $attendances = $user->attendances()
+            ->with('breakTimes')
             ->whereYear('date', $date->year)
             ->whereMonth('date', $date->month)
             ->get();
 
-        $formattedAttendanceRecords = [];
+        $formattedAttendanceRecords = $attendances->map(
+            function ($attendance) {
+                $totalBreakMinutes = $attendance->breakTimes
+                    ->filter(fn ($breakTime) => $breakTime->break_out !== null)
+                    ->sum(function ($breakTime) {
+                        $breakIn = Carbon::parse($breakTime->break_in);
+                        $breakOut = Carbon::parse($breakTime->break_out);
 
-        foreach ($attendances as $attendance) {
+                        return $breakOut->diffInMinutes($breakIn);
+                    });
 
-            $totalBreakMinutes = 0;
+                $breakHours = intdiv($totalBreakMinutes, 60);
+                $breakMinutes = $totalBreakMinutes % 60;
 
-            $breakTimes = $attendance->breakTimes()->get();
+                $breakTimeFormatted = sprintf(
+                    '%d:%02d',
+                    $breakHours,
+                    $breakMinutes
+                );
 
-            foreach ($breakTimes as $breakTime) {
+                $totalTimeFormatted = null;
 
-                if ($breakTime->break_out === null) {
-                    continue;
+                if (
+                    $attendance->clock_in !== null
+                    && $attendance->clock_out !== null
+                ) {
+                    $clockIn = Carbon::parse($attendance->clock_in);
+                    $clockOut = Carbon::parse($attendance->clock_out);
+
+                    $totalMinutes = $clockOut->diffInMinutes($clockIn);
+                    $totalTime = $totalMinutes - $totalBreakMinutes;
+
+                    if ($totalTime >= 0) {
+                        $hours = intdiv($totalTime, 60);
+                        $minutes = $totalTime % 60;
+
+                        $totalTimeFormatted = sprintf(
+                            '%d:%02d',
+                            $hours,
+                            $minutes
+                        );
+                    }
                 }
 
-                $breakIn = Carbon::parse($breakTime->break_in);
-                $breakOut = Carbon::parse($breakTime->break_out);
-
-                $breakMinutes = $breakOut->diffInMinutes($breakIn);
-
-                $totalBreakMinutes += $breakMinutes;
+                return [
+                    'id' => $attendance->id,
+                    'date' => $attendance->date,
+                    'clock_in' => $attendance->clock_in
+                        ? Carbon::parse($attendance->clock_in)->format('H:i')
+                        : '',
+                    'clock_out' => $attendance->clock_out
+                        ? Carbon::parse($attendance->clock_out)->format('H:i')
+                        : '',
+                    'total_break_time' => $breakTimeFormatted,
+                    'total_time' => $totalTimeFormatted,
+                ];
             }
-
-            $breakHours = intdiv($totalBreakMinutes, 60);
-            $breakMinutes = $totalBreakMinutes % 60;
-
-            $breakTimeFormatted = sprintf(
-                '%d:%02d',
-                $breakHours,
-                $breakMinutes
-            );
-
-            $totalTimeFormatted = null;
-
-            if (
-                $attendance->clock_in !== null
-                && $attendance->clock_out !== null
-            ) {
-                $clockIn = Carbon::parse($attendance->clock_in);
-                $clockOut = Carbon::parse($attendance->clock_out);
-
-                $totalMinutes = $clockOut->diffInMinutes($clockIn);
-
-                $totalTime = $totalMinutes - $totalBreakMinutes;
-
-                if ($totalTime >= 0) {
-                    $hours = intdiv($totalTime, 60);
-                    $minutes = $totalTime % 60;
-
-                    $totalTimeFormatted = sprintf(
-                        '%d:%02d',
-                        $hours,
-                        $minutes
-                    );
-                }
-            }
-
-            $formattedAttendanceRecords[] = [
-                'id' => $attendance->id,
-                'date' => $attendance->date,
-                'clock_in' => $attendance->clock_in ? Carbon::parse($attendance->clock_in)->format('H:i') : '',
-                'clock_out' => $attendance->clock_out ? Carbon::parse($attendance->clock_out)->format('H:i') : '',
-                'total_break_time' => $breakTimeFormatted,
-                'total_time' => $totalTimeFormatted,
-            ];
-        }
+        )->all();
 
         return view('user.user-attendance-list', compact(
             'date',
@@ -186,9 +191,13 @@ class AttendanceController extends Controller
         ));
     }
 
-    public function adminIndex(Request $request)
+    /**
+     * 管理者向けに指定日の全ユーザーの勤怠一覧を表示する。
+     */
+    public function adminIndex(Request $request): View
     {
         abort_unless(Auth::guard('web')->user()?->admin_status, 403);
+
         $date = Carbon::parse(
             $request->query('date', now()->format('Y-m-d'))
         );
@@ -200,52 +209,52 @@ class AttendanceController extends Controller
 
         $attendanceRecords = Attendance::whereDate('date', $date)
             ->with('breakTimes')
-            ->get();
+            ->get()
+            ->map(function ($attendance) {
+                $totalBreakMinutes = $attendance->breakTimes
+                    ->filter(fn ($breakTime) => $breakTime->break_out !== null)
+                    ->sum(function ($breakTime) {
+                        $breakIn = Carbon::parse($breakTime->break_in);
+                        $breakOut = Carbon::parse($breakTime->break_out);
 
-        foreach ($attendanceRecords as $attendance) {
+                        return $breakOut->diffInMinutes($breakIn);
+                    });
 
-            $totalBreakMinutes = 0;
+                $breakHours = intdiv($totalBreakMinutes, 60);
+                $breakMinutes = $totalBreakMinutes % 60;
 
-            foreach ($attendance->breakTimes as $breakTime) {
-                if ($breakTime->break_out === null) {
-                    continue;
+                $attendance->total_break_time = sprintf(
+                    '%d:%02d',
+                    $breakHours,
+                    $breakMinutes
+                );
+
+                $attendance->total_time = null;
+
+                if (
+                    $attendance->clock_in !== null
+                    && $attendance->clock_out !== null
+                ) {
+                    $clockIn = Carbon::parse($attendance->clock_in);
+                    $clockOut = Carbon::parse($attendance->clock_out);
+
+                    $totalMinutes = $clockOut->diffInMinutes($clockIn);
+                    $totalTime = $totalMinutes - $totalBreakMinutes;
+
+                    if ($totalTime >= 0) {
+                        $hours = intdiv($totalTime, 60);
+                        $minutes = $totalTime % 60;
+
+                        $attendance->total_time = sprintf(
+                            '%d:%02d',
+                            $hours,
+                            $minutes
+                        );
+                    }
                 }
 
-                $breakIn = Carbon::parse($breakTime->break_in);
-                $breakOut = Carbon::parse($breakTime->break_out);
-
-                $totalBreakMinutes += $breakOut->diffInMinutes($breakIn);
-            }
-
-            $breakHours = intdiv($totalBreakMinutes, 60);
-            $breakMinutes = $totalBreakMinutes % 60;
-
-            $attendance->total_break_time = sprintf(
-                '%d:%02d',
-                $breakHours,
-                $breakMinutes
-            );
-
-            if ($attendance->clock_out !== null) {
-
-                $clockIn = Carbon::parse($attendance->clock_in);
-                $clockOut = Carbon::parse($attendance->clock_out);
-
-                $totalMinutes = $clockOut->diffInMinutes($clockIn);
-                $totalTime = $totalMinutes - $totalBreakMinutes;
-
-                $hours = intdiv($totalTime, 60);
-                $minutes = $totalTime % 60;
-
-                $attendance->total_time = sprintf(
-                    '%d:%02d',
-                    $hours,
-                    $minutes
-                );
-            } else {
-                $attendance->total_time = null;
-            }
-        }
+                return $attendance;
+            });
 
         return view(
             'admin.admin-attendance-list',
@@ -259,7 +268,10 @@ class AttendanceController extends Controller
         );
     }
 
-    public function show($id)
+    /**
+     * 勤怠詳細を表示する。管理者と一般ユーザーで表示を切り替える。
+     */
+    public function show(int $id): View
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
@@ -365,7 +377,10 @@ class AttendanceController extends Controller
         );
     }
 
-    public function staffAttendance(Request $request, $id)
+    /**
+     * 管理者向けに指定スタッフの勤怠一覧を表示する。
+     */
+    public function staffAttendance(Request $request, int $id): View
     {
         abort_unless(Auth::guard('web')->user()?->admin_status, 403);
 

@@ -9,13 +9,18 @@ use App\Models\AttendanceCorrectionRequest;
 use App\Models\BreakTimeCorrectionRequest;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceCorrectionRequestController extends Controller
 {
-    public function store(Request $request, $id)
+    /**
+     * ユーザー種別に応じて勤怠修正処理を振り分ける。
+     */
+    public function store(Request $request, int $id): RedirectResponse
     {
         $user = auth()->user();
 
@@ -30,10 +35,11 @@ class AttendanceCorrectionRequestController extends Controller
         return $this->storeCorrection($userRequest, $id);
     }
 
-    public function storeCorrection(
-        StoreAttendanceCorrectionRequest $request,
-        $id
-    ) {
+    /**
+     * 一般ユーザーの勤怠修正申請を登録する。
+     */
+    public function storeCorrection(StoreAttendanceCorrectionRequest $request, int $id): RedirectResponse
+    {
         /** @var User $user */
         $user = Auth::guard('web')->user();
 
@@ -87,7 +93,10 @@ class AttendanceCorrectionRequestController extends Controller
         return redirect('/stamp_correction_request/list');
     }
 
-    public function index()
+    /**
+     * ログインユーザーに応じた修正申請一覧を表示する。
+     */
+    public function index(): View
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
@@ -108,19 +117,19 @@ class AttendanceCorrectionRequestController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $formattedApplications = [];
-
-        foreach ($applications as $application) {
-            $formattedApplications[] = [
-                'id' => $application->id,
-                'approval_status' => $application->status === 'pending'
-                    ? '承認待ち'
-                    : '承認済み',
-                'date' => $application->attendance->date,
-                'comment' => $application->comment,
-                'application_date' => $application->created_at,
-            ];
-        }
+        $formattedApplications = $applications->map(
+            function ($application) {
+                return [
+                    'id' => $application->id,
+                    'approval_status' => $application->status === 'pending'
+                        ? '承認待ち'
+                        : '承認済み',
+                    'date' => $application->attendance->date,
+                    'comment' => $application->comment,
+                    'application_date' => $application->created_at,
+                ];
+            }
+        )->all();
 
         return view(
             'user.user-application-list',
@@ -128,7 +137,10 @@ class AttendanceCorrectionRequestController extends Controller
         );
     }
 
-    public function adminIndex()
+    /**
+     * 管理者向けに全修正申請の一覧を表示する。
+     */
+    public function adminIndex(): View
     {
         $applications = AttendanceCorrectionRequest::with([
             'attendance.user',
@@ -142,7 +154,10 @@ class AttendanceCorrectionRequestController extends Controller
         );
     }
 
-    public function adminUpdate(AdminAttendanceUpdateRequest $request, $id)
+    /**
+     * 管理者が勤怠と休憩時間を直接修正する。
+     */
+    public function adminUpdate(AdminAttendanceUpdateRequest $request, int $id): RedirectResponse
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
@@ -195,7 +210,10 @@ class AttendanceCorrectionRequestController extends Controller
         return redirect('/admin/attendance/list');
     }
 
-    public function show($id)
+    /**
+     * 管理者向けに修正申請の詳細を表示する。
+     */
+    public function show(int $id): View
     {
         $user = Auth::guard('web')->user();
 
@@ -224,7 +242,10 @@ class AttendanceCorrectionRequestController extends Controller
 
     }
 
-    public function update($id)
+    /**
+     * 修正申請を承認し、勤怠と休憩時間に反映する。
+     */
+    public function update(int $id): RedirectResponse
     {
         $user = Auth::guard('web')->user();
         abort_unless($user?->admin_status, 403);
@@ -264,10 +285,10 @@ class AttendanceCorrectionRequestController extends Controller
             $requestedBreakIds = $breakRequests
                 ->pluck('break_time_id')
                 ->filter()
-                ->all();
+                ->flip();
 
             foreach ($attendance->breakTimes as $breakTime) {
-                if (! in_array($breakTime->id, $requestedBreakIds)) {
+                if (! $requestedBreakIds->has($breakTime->id)) {
                     BreakTimeCorrectionRequest::where(
                         'break_time_id',
                         $breakTime->id
@@ -342,7 +363,10 @@ class AttendanceCorrectionRequestController extends Controller
         return redirect('/stamp_correction_request/list');
     }
 
-    public function userShowApplication($id)
+    /**
+     * ユーザー自身の修正申請詳細から勤怠詳細画面へ遷移する。
+     */
+    public function userShowApplication(int $id): RedirectResponse
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
