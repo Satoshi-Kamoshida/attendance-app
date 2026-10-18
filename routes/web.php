@@ -37,6 +37,7 @@ Route::middleware(['auth', 'verified', 'user'])->group(function () {
         '/application/{id}',
         [AttendanceCorrectionRequestController::class, 'userShowApplication']
     );
+    Route::get('/attendance/report', [AttendanceController::class, 'report']);
 });
 
 Route::middleware('admin')->group(function () {

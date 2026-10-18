@@ -581,4 +581,122 @@ class AttendanceController extends Controller
             ]
         );
     }
+
+    /**
+     * マイ勤怠レポート画面を表示する。
+     */
+    public function report(): View
+    {
+        /** @var User $user */
+        $user = Auth::guard('web')->user();
+
+        $startDate = now()->startOfMonth()->subMonths(5);
+        $endDate = now()->endOfMonth();
+
+        $attendances = $user->attendances()
+            ->with('breakTimes')
+            ->whereBetween('date', [
+                $startDate->toDateString(),
+                $endDate->toDateString(),
+            ])
+            ->orderBy('date')
+            ->get();
+
+        $dailyRecords = $attendances
+            ->filter(function ($attendance) {
+                return $attendance->clock_in !== null
+                    && $attendance->clock_out !== null;
+            })
+            ->map(function ($attendance) {
+                $clockIn = Carbon::parse($attendance->clock_in);
+                $clockOut = Carbon::parse($attendance->clock_out);
+
+                $totalBreakMinutes = $attendance->breakTimes
+                    ->filter(function ($breakTime) {
+                        return $breakTime->break_in !== null
+                            && $breakTime->break_out !== null;
+                    })
+                    ->sum(function ($breakTime) {
+                        $breakIn = Carbon::parse($breakTime->break_in);
+                        $breakOut = Carbon::parse($breakTime->break_out);
+
+                        return $breakOut->diffInMinutes($breakIn);
+                    });
+
+                $elapsedMinutes = $clockOut->diffInMinutes($clockIn);
+                $workMinutes = $elapsedMinutes - $totalBreakMinutes;
+
+                if ($workMinutes < 0) {
+                    return null;
+                }
+
+                return [
+                    'date' => Carbon::parse($attendance->date),
+                    'clock_in' => $clockIn,
+                    'clock_out' => $clockOut,
+                    'work_minutes' => $workMinutes,
+                    'overtime_minutes' => max(0, $workMinutes - 480),
+                ];
+            })
+            ->filter()
+            ->values();
+
+        $totalWorkMinutes = $dailyRecords->sum('work_minutes');
+
+        $totalOvertimeMinutes = $dailyRecords->sum('overtime_minutes');
+
+        $avgWorkMinutes = $dailyRecords->isNotEmpty()
+            ? (int) round($totalWorkMinutes / $dailyRecords->count())
+            : 0;
+
+        $monthlyTrend = collect(range(0, 5))
+            ->map(function ($monthOffset) use ($startDate, $dailyRecords) {
+                $month = $startDate->copy()->addMonths($monthOffset);
+                $monthKey = $month->format('Y-m');
+
+                $records = $dailyRecords->filter(function ($record) use ($monthKey) {
+                    return $record['date']->format('Y-m') === $monthKey;
+                });
+
+                return [
+                    'month' => $month->format('Y年n月'),
+                    'work_minutes' => $records->sum('work_minutes'),
+                    'overtime_minutes' => $records->sum('overtime_minutes'),
+                ];
+            });
+
+        $currentMonthRecords = $dailyRecords->filter(function ($record) {
+            return $record['date']->isSameMonth(now());
+        });
+
+        $anomalies = [
+            'late_count' => $currentMonthRecords
+                ->filter(function ($record) {
+                    return $record['clock_in']->format('H:i:s') > '09:00:00';
+                })
+                ->count(),
+
+            'early_leave_count' => $currentMonthRecords
+                ->filter(function ($record) {
+                    return $record['clock_out']->format('H:i:s') < '18:00:00';
+                })
+                ->count(),
+
+            'long_work_count' => $currentMonthRecords
+                ->filter(function ($record) {
+                    return $record['work_minutes'] > 600;
+                })
+                ->count(),
+        ];
+
+        return view('reports.index', [
+            'summary' => [
+                'total_work_minutes' => $totalWorkMinutes,
+                'total_overtime_minutes' => $totalOvertimeMinutes,
+                'avg_work_minutes' => $avgWorkMinutes,
+            ],
+            'monthlyTrend' => $monthlyTrend,
+            'anomalies' => $anomalies,
+        ]);
+    }
 }
