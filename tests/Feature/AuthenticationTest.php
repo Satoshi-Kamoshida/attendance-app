@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -217,5 +220,60 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+    }
+
+    public function test_user_can_verify_email(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            [
+                'id' => $user->id,
+                'hash' => sha1($user->getEmailForVerification()),
+            ]
+        );
+
+        $response = $this->actingAs($user)->get($verificationUrl);
+
+        $response->assertRedirect('/attendance?verified=1');
+
+        $this->assertTrue($user->fresh()->email_verified_at !== null, 'メール認証後、email_verified_atが更新されていること');
+    }
+
+    public function test_unverified_user_can_resend_verification_email(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->actingAs($user)
+            ->post(route('verification.send'));
+
+        $response->assertRedirect();
+
+        Notification::assertSentTo(
+            $user,
+            VerifyEmail::class
+        );
+    }
+
+    public function test_unverified_user_cannot_access_attendance_page(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->actingAs($user)->get('/attendance');
+
+        $response->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_unverified_user_can_access_verification_notice(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->actingAs($user)->get(route('verification.notice'));
+
+        $response->assertOk();
     }
 }
