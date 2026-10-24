@@ -7,6 +7,9 @@ use Illuminate\Contracts\View\View;
 
 class UserController extends Controller
 {
+    /**
+     * 管理者向けのスタッフ一覧を表示する。
+     */
     public function index(): View
     {
         abort_unless(auth()->user()->admin_status, 403);

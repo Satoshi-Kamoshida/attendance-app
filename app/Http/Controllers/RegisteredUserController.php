@@ -17,6 +17,9 @@ class RegisteredUserController extends Controller
         $this->guard = $guard;
     }
 
+    /**
+     * 新規ユーザーを登録し、ログイン状態にする。
+     */
     public function store(
         RegisterRequest $request,
         CreatesNewUsers $creator
