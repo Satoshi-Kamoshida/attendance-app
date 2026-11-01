@@ -34,9 +34,6 @@ class StoreAttendanceRecordRequest extends FormRequest
         ];
     }
 
-    /**
-     * バリデーションエラーメッセージを日本語にする。
-     */
     public function messages(): array
     {
         return [

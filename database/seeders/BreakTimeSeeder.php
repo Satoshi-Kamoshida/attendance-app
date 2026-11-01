@@ -17,8 +17,7 @@ class BreakTimeSeeder extends Seeder
                 continue;
             }
 
-            if ($attendance->user_id === 1) {
-                // user1：すべての対象勤怠に固定休憩を設定する。
+            if ((int) $attendance->user_id === 1) {
                 BreakTime::factory()->create([
                     'attendance_id' => $attendance->id,
                     'break_in' => '12:00:00',
@@ -28,7 +27,6 @@ class BreakTimeSeeder extends Seeder
                 continue;
             }
 
-            // user2：従来のランダムな休憩データを維持する。
             BreakTime::factory()->create([
                 'attendance_id' => $attendance->id,
             ]);

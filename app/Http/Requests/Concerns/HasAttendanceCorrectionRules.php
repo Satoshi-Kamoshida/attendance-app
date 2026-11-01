@@ -4,12 +4,15 @@ namespace App\Http\Requests\Concerns;
 
 trait HasAttendanceCorrectionRules
 {
+    /**
+     * 勤怠修正申請の共通バリデーションルールを定義する。
+     */
     protected function attendanceCorrectionRules(): array
     {
         $rules = [
             'new_clock_in' => [
                 'bail',
-                'nullable',
+                'required',
                 'date_format:H:i',
             ],
             'new_clock_out' => [

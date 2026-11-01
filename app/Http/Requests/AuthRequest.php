@@ -11,6 +11,9 @@ class AuthRequest extends FortifyLoginRequest
         return true;
     }
 
+    /**
+     * ログインの共通バリデーションルールを定義する。
+     */
     public function rules(): array
     {
         return [

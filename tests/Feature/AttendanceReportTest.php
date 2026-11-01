@@ -14,7 +14,7 @@ class AttendanceReportTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * ゲストはマイ勤怠レポートにアクセスできない。
+     * @testcase ID 20
      */
     public function test_guest_is_redirected_from_attendance_report(): void
     {
@@ -24,7 +24,7 @@ class AttendanceReportTest extends TestCase
     }
 
     /**
-     * マイ勤怠レポートの集計値が正しく表示される。
+     * @testcase ID 20
      */
     public function test_user_can_view_attendance_report_with_correct_statistics(): void
     {
@@ -75,7 +75,7 @@ class AttendanceReportTest extends TestCase
     }
 
     /**
-     * 勤怠データがないユーザーの集計値は0になる。
+     * @testcase ID 20
      */
     public function test_user_without_attendance_records_sees_zero_statistics(): void
     {
@@ -107,7 +107,7 @@ class AttendanceReportTest extends TestCase
     }
 
     /**
-     * 今月の遅刻・早退・長時間労働が正しく集計される。
+     * @testcase ID 20
      */
     public function test_attendance_report_counts_monthly_anomalies_correctly(): void
     {
@@ -160,7 +160,7 @@ class AttendanceReportTest extends TestCase
     }
 
     /**
-     * 他のユーザーの勤怠はレポートに集計されない。
+     * @testcase ID 20
      */
     public function test_attendance_report_does_not_include_other_users_records(): void
     {

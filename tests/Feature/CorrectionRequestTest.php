@@ -13,6 +13,9 @@ class CorrectionRequestTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @testcase ID 11
+     */
     public function test_application_list_shows_only_own_applications(): void
     {
         $userA = User::factory()->create(['admin_status' => 0]);
@@ -56,6 +59,9 @@ class CorrectionRequestTest extends TestCase
         );
     }
 
+    /**
+     * @testcase ID 11
+     */
     public function test_user_can_submit_attendance_correction_request(): void
     {
         $user = User::factory()->create([
@@ -89,6 +95,9 @@ class CorrectionRequestTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 11
+     */
     public function test_user_cannot_submit_another_request_while_pending(): void
     {
         $user = User::factory()->create([
@@ -124,6 +133,9 @@ class CorrectionRequestTest extends TestCase
         $this->assertDatabaseCount('attendance_correction_requests', 1);
     }
 
+    /**
+     * @testcase ID 11
+     */
     public function test_attendance_correction_rejects_invalid_input(): void
     {
         $user = User::factory()->create([
@@ -203,6 +215,9 @@ class CorrectionRequestTest extends TestCase
         }
     }
 
+    /**
+     * @testcase ID 15
+     */
     public function test_admin_can_view_correction_applications_and_detail(): void
     {
         $admin = User::factory()->create([
@@ -228,7 +243,7 @@ class CorrectionRequestTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get('/stamp_correction_request/list')
             ->assertOk()
             ->assertViewHas('applications', function ($applications) use (
@@ -256,6 +271,9 @@ class CorrectionRequestTest extends TestCase
             });
     }
 
+    /**
+     * @testcase ID 15
+     */
     public function test_admin_approval_updates_attendance_and_break_times(): void
     {
         $admin = User::factory()->create([
@@ -312,7 +330,7 @@ class CorrectionRequestTest extends TestCase
             'new_break_out' => '16:15:00',
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post(
                 '/stamp_correction_request/approve/'.$application->id
             )
@@ -348,6 +366,9 @@ class CorrectionRequestTest extends TestCase
         $this->assertDatabaseCount('break_times', 2);
     }
 
+    /**
+     * @testcase ID 15
+     */
     public function test_admin_approval_rejects_invalid_or_already_approved_request(): void
     {
         $admin = User::factory()->create([
@@ -373,7 +394,7 @@ class CorrectionRequestTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post(
                 '/stamp_correction_request/approve/'.$missingClockIn->id
             )
@@ -397,6 +418,9 @@ class CorrectionRequestTest extends TestCase
         )->assertStatus(409);
     }
 
+    /**
+     * @testcase ID 11
+     */
     public function test_user_cannot_open_another_users_application_detail(): void
     {
         $userA = User::factory()->create([
@@ -425,6 +449,9 @@ class CorrectionRequestTest extends TestCase
             ->assertNotFound();
     }
 
+    /**
+     * @testcase ID 11
+     */
     public function test_application_list_shows_own_pending_and_approved_requests_only(): void
     {
         $user = User::factory()->create([
@@ -508,6 +535,9 @@ class CorrectionRequestTest extends TestCase
         );
     }
 
+    /**
+     * @testcase ID 15
+     */
     public function test_admin_approval_rejects_inconsistent_break_times(): void
     {
         $admin = User::factory()->create([
@@ -561,7 +591,7 @@ class CorrectionRequestTest extends TestCase
             'new_break_out' => null,
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         $this->post(
             '/stamp_correction_request/approve/'.$invalidOrderApplication->id
@@ -601,6 +631,9 @@ class CorrectionRequestTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 15
+     */
     public function test_admin_application_list_shows_pending_and_approved_requests(): void
     {
         $admin = User::factory()->create([

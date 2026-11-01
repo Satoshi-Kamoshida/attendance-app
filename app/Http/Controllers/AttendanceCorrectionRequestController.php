@@ -22,9 +22,9 @@ class AttendanceCorrectionRequestController extends Controller
      */
     public function store(Request $request, int $id): RedirectResponse
     {
-        $user = auth()->user();
+        $admin = Auth::guard('admin')->user();
 
-        if ($user->admin_status) {
+        if ($admin?->admin_status) {
             $adminRequest = app(AdminAttendanceUpdateRequest::class);
 
             return $this->adminUpdate($adminRequest, $id);
@@ -98,8 +98,9 @@ class AttendanceCorrectionRequestController extends Controller
      */
     public function index(): View
     {
-        /** @var User $user */
-        $user = Auth::guard('web')->user();
+        /** @var User|null $user */
+        $user = Auth::guard('admin')->user()
+            ?? Auth::guard('web')->user();
 
         abort_unless($user, 403);
 
@@ -160,7 +161,7 @@ class AttendanceCorrectionRequestController extends Controller
     public function adminUpdate(AdminAttendanceUpdateRequest $request, int $id): RedirectResponse
     {
         /** @var User $user */
-        $user = Auth::guard('web')->user();
+        $user = Auth::guard('admin')->user();
         abort_unless($user?->admin_status, 403);
 
         $attendance = Attendance::with(['breakTimes' => function ($query) {
@@ -215,7 +216,7 @@ class AttendanceCorrectionRequestController extends Controller
      */
     public function show(int $id): View
     {
-        $user = Auth::guard('web')->user();
+        $user = Auth::guard('admin')->user();
 
         abort_unless($user?->admin_status, 403);
 
@@ -247,7 +248,7 @@ class AttendanceCorrectionRequestController extends Controller
      */
     public function update(int $id): RedirectResponse
     {
-        $user = Auth::guard('web')->user();
+        $user = Auth::guard('admin')->user();
         abort_unless($user?->admin_status, 403);
 
         DB::transaction(function () use ($id) {

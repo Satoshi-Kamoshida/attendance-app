@@ -11,37 +11,19 @@ class StoreAttendanceCorrectionRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return true;
+        return ! $this->user()?->admin_status;
     }
 
-    protected function prepareForValidation(): void
-    {
-        $this->merge([
-            'action' => 'create',
-        ]);
-    }
-
+    /**
+     * 勤怠修正申請の共通バリデーションルールを取得する。
+     */
     public function rules(): array
     {
-        $rules = $this->attendanceCorrectionRules();
-
-        $rules['action'] = ['required', 'in:create,update,delete'];
-
-        array_unshift($rules['new_break_in.*'], 'exclude_if:action,delete');
-        array_unshift($rules['new_break_out.*'], 'exclude_if:action,delete');
-
-        return $rules;
+        return $this->attendanceCorrectionRules();
     }
 
     public function messages(): array
     {
-        return array_merge(
-            $this->attendanceCorrectionMessages(),
-            [
-                'action.required' => '申請の種類を指定してください',
-                'action.in' => '申請の種類が不正です',
-                'comment.string' => '備考は文字列で入力してください',
-            ]
-        );
+        return $this->attendanceCorrectionMessages();
     }
 }

@@ -12,6 +12,9 @@ class Attendance extends Model
 {
     use HasFactory;
 
+    /**
+     * マスアサイメント可能な属性を定義する。
+     */
     protected $fillable = [
         'date',
         'clock_in',
@@ -19,21 +22,33 @@ class Attendance extends Model
         'comment',
     ];
 
+    /**
+     * ユーザーとのリレーションを定義する。
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * 休憩時間とのリレーションを定義する。
+     */
     public function breakTimes(): HasMany
     {
         return $this->hasMany(BreakTime::class);
     }
 
+    /**
+     * 勤怠修正申請とのリレーションを定義する。
+     */
     public function attendanceCorrectionRequests(): HasMany
     {
         return $this->hasMany(AttendanceCorrectionRequest::class);
     }
 
+    /**
+     * 総休憩時間を取得する。
+     */
     public function getTotalBreakTimeAttribute(): string
     {
         $totalMinutes = $this->breakTimes
@@ -55,6 +70,9 @@ class Attendance extends Model
         );
     }
 
+    /**
+     * 総労働時間を取得する。
+     */
     public function getTotalTimeAttribute(): ?string
     {
         if ($this->clock_in === null || $this->clock_out === null) {
@@ -78,6 +96,9 @@ class Attendance extends Model
         );
     }
 
+    /**
+     * 総休憩時間を分単位で算出する。
+     */
     private function getTotalBreakMinutes(): int
     {
         return $this->breakTimes

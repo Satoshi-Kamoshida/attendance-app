@@ -103,7 +103,7 @@ return [
         'array' => 'The :attribute field must have at least :min items.',
         'file' => 'The :attribute field must be at least :min kilobytes.',
         'numeric' => 'The :attribute field must be at least :min.',
-        'string' => ':attributeは:min文字以上で入力してください。',
+        'string' => ':attributeは:min文字以上で入力してください',
     ],
     'min_digits' => 'The :attribute field must have at least :min digits.',
     'missing' => 'The :attribute field must be missing.',
@@ -190,6 +190,11 @@ return [
         'name' => 'お名前',
         'email' => 'メールアドレス',
         'password' => 'パスワード',
+        'new_clock_in' => '出勤時刻',
+        'new_clock_out' => '退勤時刻',
+        'new_break_in.*' => '休憩開始時刻',
+        'new_break_out.*' => '休憩終了時刻',
+        'comment' => '備考',
     ],
 
 ];

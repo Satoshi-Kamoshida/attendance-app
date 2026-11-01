@@ -197,7 +197,7 @@ class AttendanceController extends Controller
      */
     public function adminIndex(Request $request): View
     {
-        abort_unless(Auth::guard('web')->user()?->admin_status, 403);
+        abort_unless(Auth::guard('admin')->user()?->admin_status, 403);
 
         $date = Carbon::parse(
             $request->query('date', now()->format('Y-m-d'))
@@ -272,10 +272,15 @@ class AttendanceController extends Controller
     /**
      * 勤怠詳細を表示する。管理者と一般ユーザーで表示を切り替える。
      */
-    public function show(int $id): View
+    public function show(Request $request, int $id): View
     {
-        /** @var User $user */
-        $user = Auth::guard('web')->user();
+        /** @var User|null $admin */
+        $admin = Auth::guard('admin')->user();
+
+        /** @var User|null $user */
+        $user = $admin?->admin_status
+            ? $admin
+            : Auth::guard('web')->user();
 
         abort_unless($user, 403);
 
@@ -383,7 +388,7 @@ class AttendanceController extends Controller
      */
     public function staffAttendance(Request $request, int $id): View
     {
-        abort_unless(Auth::guard('web')->user()?->admin_status, 403);
+        abort_unless(Auth::guard('admin')->user()?->admin_status, 403);
 
         $user = User::where('admin_status', false)
             ->findOrFail($id);
