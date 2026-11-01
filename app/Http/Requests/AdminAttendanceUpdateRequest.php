@@ -11,9 +11,12 @@ class AdminAttendanceUpdateRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return (bool) $this->user()?->admin_status;
+        return (bool) $this->user('admin')?->admin_status;
     }
 
+    /**
+     * 勤怠修正申請の共通バリデーションルールを取得する。
+     */
     public function rules(): array
     {
         return $this->attendanceCorrectionRules();

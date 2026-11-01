@@ -11,6 +11,9 @@ class AttendanceRecordApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @testcase ID 17
+     */
     public function test_can_get_attendance_records(): void
     {
         $user = User::factory()->create();
@@ -47,6 +50,9 @@ class AttendanceRecordApiTest extends TestCase
             ->assertJsonPath('data.0.total_break_time', '0:00');
     }
 
+    /**
+     * @testcase ID 17
+     */
     public function test_can_get_attendance_record_detail(): void
     {
         $user = User::factory()->create();
@@ -90,6 +96,9 @@ class AttendanceRecordApiTest extends TestCase
             ->assertJsonCount(1, 'data.breaks');
     }
 
+    /**
+     * @testcase ID 17
+     */
     public function test_returns_404_for_nonexistent_attendance_record(): void
     {
         $response = $this->getJson('/api/v1/attendance-records/999999');
@@ -100,6 +109,9 @@ class AttendanceRecordApiTest extends TestCase
             ]);
     }
 
+    /**
+     * @testcase ID 18
+     */
     public function test_authenticated_user_can_create_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -126,6 +138,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_guest_cannot_create_attendance_record(): void
     {
         $response = $this->postJson('/api/v1/attendance-records', [
@@ -141,6 +156,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_guest_cannot_update_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -157,6 +175,9 @@ class AttendanceRecordApiTest extends TestCase
         $response->assertUnauthorized();
     }
 
+    /**
+     * @testcase ID 19・追加検証
+     */
     public function test_guest_cannot_patch_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -173,6 +194,9 @@ class AttendanceRecordApiTest extends TestCase
         $response->assertUnauthorized();
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_guest_cannot_delete_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -190,6 +214,9 @@ class AttendanceRecordApiTest extends TestCase
         $this->assertDatabaseHas('attendances', ['id' => $attendance->id]);
     }
 
+    /**
+     * @testcase ID 19・追加検証
+     */
     public function test_attendance_record_belongs_to_authenticated_user(): void
     {
         $user = User::factory()->create();
@@ -216,6 +243,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_cannot_create_duplicate_attendance_record_for_same_user_and_date(): void
     {
         $user = User::factory()->create();
@@ -239,6 +269,9 @@ class AttendanceRecordApiTest extends TestCase
         $this->assertDatabaseCount('attendances', 1);
     }
 
+    /**
+     * @testcase ID 18
+     */
     public function test_create_attendance_record_rejects_invalid_input(): void
     {
         $user = User::factory()->create();
@@ -262,6 +295,9 @@ class AttendanceRecordApiTest extends TestCase
         $this->assertDatabaseCount('attendances', 0);
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_attendance_owner_can_update_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -294,6 +330,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_user_cannot_update_another_users_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -325,6 +364,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19・追加検証
+     */
     public function test_admin_can_update_another_users_attendance_record(): void
     {
         $admin = User::factory()->create([
@@ -363,6 +405,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_patch_updates_only_provided_fields(): void
     {
         $user = User::factory()->create();
@@ -394,6 +439,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_patch_rejects_clock_out_before_existing_clock_in(): void
     {
         $user = User::factory()->create();
@@ -420,6 +468,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_attendance_owner_can_delete_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -438,6 +489,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19
+     */
     public function test_user_cannot_delete_another_users_attendance_record(): void
     {
         $owner = User::factory()->create();
@@ -458,6 +512,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 19・追加検証
+     */
     public function test_admin_can_delete_another_users_attendance_record(): void
     {
         $owner = User::factory()->create();
@@ -479,6 +536,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18
+     */
     public function test_delete_returns_404_for_nonexistent_attendance_record(): void
     {
         $user = User::factory()->create();
@@ -492,6 +552,9 @@ class AttendanceRecordApiTest extends TestCase
             ]);
     }
 
+    /**
+     * @testcase ID 17・追加検証
+     */
     public function test_can_filter_attendance_records_by_user_id(): void
     {
         $user1 = User::factory()->create();
@@ -512,6 +575,9 @@ class AttendanceRecordApiTest extends TestCase
         $response->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.user_id', $user1->id);
     }
 
+    /**
+     * @testcase ID 17・追加検証
+     */
     public function test_can_filter_attendance_records_by_date(): void
     {
         $user = User::factory()->create();
@@ -535,6 +601,9 @@ class AttendanceRecordApiTest extends TestCase
             ->assertJsonPath('data.0.date', '2026-10-20');
     }
 
+    /**
+     * @testcase ID 17・追加検証
+     */
     public function test_can_filter_attendance_records_by_month(): void
     {
         $user = User::factory()->create();
@@ -558,6 +627,9 @@ class AttendanceRecordApiTest extends TestCase
             ->assertJsonPath('data.0.date', '2026-10-20');
     }
 
+    /**
+     * @testcase ID 17・追加検証
+     */
     public function test_can_paginate_attendance_records(): void
     {
         $user = User::factory()->create();
@@ -581,6 +653,9 @@ class AttendanceRecordApiTest extends TestCase
             ->assertJsonPath('meta.total', 3);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_update_rejects_clock_out_before_clock_in(): void
     {
         $user = User::factory()->create();
@@ -608,6 +683,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_update_rejects_duplicate_date_for_same_user(): void
     {
         $user = User::factory()->create();
@@ -641,6 +719,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_update_rejects_comment_over_255_characters(): void
     {
         $user = User::factory()->create();
@@ -670,6 +751,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_update_rejects_invalid_date_and_time_formats(): void
     {
         $user = User::factory()->create();
@@ -698,6 +782,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 18・追加検証
+     */
     public function test_patch_rejects_comment_over_255_characters(): void
     {
         $user = User::factory()->create();
@@ -724,6 +811,9 @@ class AttendanceRecordApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 17
+     */
     public function test_attendance_record_detail_includes_applications(): void
     {
         $user = User::factory()->create();

@@ -12,6 +12,9 @@ class AdminAttendanceTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @testcase ID 12
+     */
     public function test_user_cannot_access_admin_attendance_list(): void
     {
         $user = User::factory()->create([
@@ -21,21 +24,27 @@ class AdminAttendanceTest extends TestCase
         $response = $this->actingAs($user)
             ->get('/admin/attendance/list');
 
-        $response->assertForbidden();
+        $response->assertRedirect('/admin/login');
     }
 
+    /**
+     * @testcase ID 12
+     */
     public function test_admin_can_access_admin_attendance_list(): void
     {
         $admin = User::factory()->create([
             'admin_status' => 1,
         ]);
 
-        $response = $this->actingAs($admin)
+        $response = $this->actingAs($admin, 'admin')
             ->get('/admin/attendance/list');
 
         $response->assertOk();
     }
 
+    /**
+     * @testcase ID 13
+     */
     public function test_admin_can_update_attendance_and_break_times(): void
     {
         $admin = User::factory()->create([
@@ -64,7 +73,7 @@ class AdminAttendanceTest extends TestCase
             'break_out' => '15:15:00',
         ]);
 
-        $response = $this->actingAs($admin)->post(
+        $response = $this->actingAs($admin, 'admin')->post(
             '/attendance/'.$attendance->id,
             [
                 'new_clock_in' => '09:15',
@@ -112,6 +121,9 @@ class AdminAttendanceTest extends TestCase
         $this->assertDatabaseCount('break_times', 2);
     }
 
+    /**
+     * @testcase ID 12 / 14
+     */
     public function test_admin_attendance_and_staff_lists_show_correct_records(): void
     {
         $this->travelTo(
@@ -146,7 +158,7 @@ class AdminAttendanceTest extends TestCase
             'clock_out' => '17:00:00',
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get('/admin/attendance/list?date=2026-10-15')
             ->assertOk()
             ->assertViewHas('date', function ($date) {
@@ -189,6 +201,9 @@ class AdminAttendanceTest extends TestCase
             );
     }
 
+    /**
+     * @testcase ID 13
+     */
     public function test_admin_attendance_update_rejects_invalid_input(): void
     {
         $admin = User::factory()->create([
@@ -266,7 +281,7 @@ class AdminAttendanceTest extends TestCase
         ];
 
         foreach ($invalidCases as $case) {
-            $response = $this->actingAs($admin)
+            $response = $this->actingAs($admin, 'admin')
                 ->from('/admin/attendance/list')
                 ->post(
                     '/attendance/'.$attendance->id,
@@ -286,6 +301,9 @@ class AdminAttendanceTest extends TestCase
         }
     }
 
+    /**
+     * @testcase ID 14
+     */
     public function test_admin_staff_list_shows_general_users_in_id_order(): void
     {
         $admin = User::factory()->create([
@@ -306,7 +324,7 @@ class AdminAttendanceTest extends TestCase
             'email' => 'staff-a@example.com',
         ]);
 
-        $response = $this->actingAs($admin)
+        $response = $this->actingAs($admin, 'admin')
             ->get('/admin/staff/list');
 
         $response->assertOk()
@@ -332,6 +350,9 @@ class AdminAttendanceTest extends TestCase
             });
     }
 
+    /**
+     * @testcase ID 14
+     */
     public function test_general_user_cannot_access_admin_staff_list(): void
     {
         $user = User::factory()->create([
@@ -340,9 +361,12 @@ class AdminAttendanceTest extends TestCase
 
         $this->actingAs($user)
             ->get('/admin/staff/list')
-            ->assertForbidden();
+            ->assertRedirect('/admin/login');
     }
 
+    /**
+     * @testcase ID 12
+     */
     public function test_admin_attendance_list_calculates_multiple_breaks_and_work_time(): void
     {
         $admin = User::factory()->create([
@@ -371,7 +395,7 @@ class AdminAttendanceTest extends TestCase
             ],
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get('/admin/attendance/list?date=2026-10-15')
             ->assertOk()
             ->assertViewHas('attendanceRecords', function ($records) use (

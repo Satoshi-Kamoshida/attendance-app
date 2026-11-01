@@ -11,6 +11,9 @@ class CsvExportTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * 追加検証
+     */
     public function test_admin_can_export_attendance_csv(): void
     {
         $admin = User::factory()->create([
@@ -35,7 +38,7 @@ class CsvExportTest extends TestCase
             'clock_out' => '17:00:00',
         ]);
 
-        $response = $this->actingAs($admin)->post('/export', [
+        $response = $this->actingAs($admin, 'admin')->post('/export', [
             'user_id' => $user->id,
             'year_month' => '2026-10',
         ]);
@@ -53,6 +56,9 @@ class CsvExportTest extends TestCase
         $this->assertStringNotContainsString('2026/09/14', $content);
     }
 
+    /**
+     * 追加検証
+     */
     public function test_general_user_cannot_export_attendance_csv(): void
     {
         $user = User::factory()->create([
@@ -68,16 +74,19 @@ class CsvExportTest extends TestCase
             'year_month' => '2026-10',
         ]);
 
-        $response->assertForbidden();
+        $response->assertRedirect('/admin/login');
     }
 
+    /**
+     * 追加検証
+     */
     public function test_csv_export_rejects_invalid_input(): void
     {
         $admin = User::factory()->create([
             'admin_status' => 1,
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post('/export', [
                 'user_id' => '',
                 'year_month' => '2026-13',
@@ -88,6 +97,9 @@ class CsvExportTest extends TestCase
             ]);
     }
 
+    /**
+     * 追加検証
+     */
     public function test_csv_export_rejects_admin_as_staff_target(): void
     {
         $admin = User::factory()->create([
@@ -98,7 +110,7 @@ class CsvExportTest extends TestCase
             'admin_status' => 1,
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post('/export', [
                 'user_id' => $targetAdmin->id,
                 'year_month' => '2026-10',

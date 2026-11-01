@@ -14,21 +14,32 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Actions\AttemptToAuthenticate;
+use Laravel\Fortify\Actions\CanonicalizeUsername;
+use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
+use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
 use Laravel\Fortify\Contracts\VerifyEmailViewResponse;
+use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Requests\LoginRequest;
 
 class FortifyServiceProvider extends ServiceProvider
 {
+    /**
+     * Fortifyの認証レスポンスと認証リクエストを登録する。
+     */
     public function register(): void
     {
         $this->app->bind(
             LoginRequest::class,
             AuthRequest::class
         );
+        /**
+         * ログイン後の遷移先を認証種別に応じて設定する。
+         */
         $this->app->instance(LoginResponse::class, new class implements LoginResponse
         {
             public function toResponse($request)
@@ -73,6 +84,9 @@ class FortifyServiceProvider extends ServiceProvider
         );
     }
 
+    /**
+     * Fortifyの認証処理や各種設定を初期化する。
+     */
     public function boot(): void
     {
         Fortify::createUsersUsing(CreateNewUser::class);
@@ -98,7 +112,39 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::registerView(function () {
             return view('user.register');
         });
+        /**
+         * ログイン時に実行する認証処理の順序を設定する。
+         */
+        Fortify::authenticateThrough(function (Request $request) {
 
+            config([
+                'fortify.guard' => $request->is('admin/login')
+                    ? 'admin'
+                    : 'web',
+            ]);
+
+            return array_filter([
+                config('fortify.limiters.login')
+                    ? null
+                    : EnsureLoginIsNotThrottled::class,
+
+                config('fortify.lowercase_usernames')
+                    ? CanonicalizeUsername::class
+                    : null,
+
+                Features::enabled(Features::twoFactorAuthentication())
+                    ? RedirectIfTwoFactorAuthenticatable::class
+                    : null,
+
+                AttemptToAuthenticate::class,
+
+                PrepareAuthenticatedSession::class,
+            ]);
+        });
+
+        /**
+         * ログイン時のユーザー認証条件を設定する。
+         */
         Fortify::authenticateUsing(function (Request $request) {
 
             $user = User::where('email', $request->email)->first();

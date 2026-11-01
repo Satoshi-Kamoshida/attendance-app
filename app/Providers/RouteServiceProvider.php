@@ -20,7 +20,7 @@ class RouteServiceProvider extends ServiceProvider
     public const HOME = '/attendance';
 
     /**
-     * Define your route model bindings, pattern filters, and other route configuration.
+     * APIのレート制限を設定し、WebルートとAPIルートを登録する。
      */
     public function boot(): void
     {

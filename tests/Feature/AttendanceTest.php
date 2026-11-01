@@ -12,6 +12,9 @@ class AttendanceTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @testcase ID 9
+     */
     public function test_guest_is_redirected_from_attendance_list(): void
     {
         $response = $this->get('/attendance/list');
@@ -19,6 +22,9 @@ class AttendanceTest extends TestCase
         $response->assertRedirect('/login');
     }
 
+    /**
+     * @testcase ID 9
+     */
     public function test_user_can_access_own_attendance_list(): void
     {
         $user = User::factory()->create([
@@ -31,6 +37,9 @@ class AttendanceTest extends TestCase
         $response->assertOk();
     }
 
+    /**
+     * @testcase ID 10
+     */
     public function test_user_cannot_view_another_users_attendance(): void
     {
         $userA = User::factory()->create([
@@ -51,6 +60,9 @@ class AttendanceTest extends TestCase
         $response->assertNotFound();
     }
 
+    /**
+     * @testcase ID 6
+     */
     public function test_user_can_clock_in(): void
     {
         $user = User::factory()->create([
@@ -73,6 +85,9 @@ class AttendanceTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 7
+     */
     public function test_user_can_start_break(): void
     {
         $user = User::factory()->create([
@@ -102,6 +117,9 @@ class AttendanceTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 7
+     */
     public function test_user_can_end_break(): void
     {
         $user = User::factory()->create([
@@ -137,6 +155,9 @@ class AttendanceTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 7
+     */
     public function test_user_can_take_multiple_breaks_in_one_day(): void
     {
         $user = User::factory()->create([
@@ -197,6 +218,9 @@ class AttendanceTest extends TestCase
             });
     }
 
+    /**
+     * @testcase ID 8
+     */
     public function test_user_can_clock_out(): void
     {
         $user = User::factory()->create([
@@ -229,6 +253,9 @@ class AttendanceTest extends TestCase
         $this->assertDatabaseCount('attendances', 1);
     }
 
+    /**
+     * @testcase ID 9
+     */
     public function test_attendance_list_shows_only_own_records_for_selected_month(): void
     {
         $userA = User::factory()->create(['admin_status' => 0]);
@@ -274,6 +301,9 @@ class AttendanceTest extends TestCase
         );
     }
 
+    /**
+     * @testcase ID 10
+     */
     public function test_user_can_view_own_attendance_details(): void
     {
         $user = User::factory()->create([
@@ -323,6 +353,9 @@ class AttendanceTest extends TestCase
         });
     }
 
+    /**
+     * @testcase ID 9
+     */
     public function test_attendance_list_defaults_to_current_month_and_sums_multiple_breaks(): void
     {
 
@@ -378,6 +411,9 @@ class AttendanceTest extends TestCase
         );
     }
 
+    /**
+     * @testcase ID 4-5
+     */
     public function test_attendance_page_shows_current_datetime_and_status(): void
     {
         $this->travelTo(
@@ -435,6 +471,9 @@ class AttendanceTest extends TestCase
             });
     }
 
+    /**
+     * @testcase ID 6
+     */
     public function test_clock_in_does_not_create_duplicate_attendance(): void
     {
         $this->travelTo(
@@ -464,6 +503,9 @@ class AttendanceTest extends TestCase
         ]);
     }
 
+    /**
+     * @testcase ID 13
+     */
     public function test_admin_can_view_correct_attendance_detail(): void
     {
         $admin = User::factory()->create([
@@ -488,7 +530,7 @@ class AttendanceTest extends TestCase
             'break_out' => '13:00:00',
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get('/admin/attendance/'.$attendance->id)
             ->assertOk()
             ->assertViewIs('admin.admin-detail')
@@ -508,6 +550,9 @@ class AttendanceTest extends TestCase
             });
     }
 
+    /**
+     * @testcase ID 10
+     */
     public function test_user_attendance_detail_contains_correct_display_data(): void
     {
         $user = User::factory()->create([

@@ -11,9 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 class RedirectIfAuthenticated
 {
     /**
-     * Handle an incoming request.
-     *
-     * @param  Closure(Request): (Response)  $next
+     * 認証状態を確認し、認証済みの場合はホーム画面へリダイレクトする。
      */
     public function handle(Request $request, Closure $next, string ...$guards): Response
     {

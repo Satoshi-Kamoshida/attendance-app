@@ -14,6 +14,9 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @testcase ID 1
+     */
     public function test_registration_validation_and_success(): void
     {
         $invalidCases = [
@@ -138,6 +141,9 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticated();
     }
 
+    /**
+     * @testcase ID 2-3
+     */
     public function test_user_and_admin_login_validation_and_authentication(): void
     {
         $user = User::factory()->create([
@@ -203,9 +209,12 @@ class AuthenticationTest extends TestCase
             'password' => 'password123',
         ])->assertRedirect('/admin/attendance/list');
 
-        $this->assertAuthenticatedAs($admin);
+        $this->assertAuthenticatedAs($admin, 'admin');
     }
 
+    /**
+     * @testcase ID 3-4
+     */
     public function test_general_user_cannot_login_through_admin_login(): void
     {
         $user = User::factory()->create([
@@ -222,6 +231,9 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    /**
+     * @testcase ID 16
+     */
     public function test_user_can_verify_email(): void
     {
         $user = User::factory()->unverified()->create();
@@ -242,6 +254,9 @@ class AuthenticationTest extends TestCase
         $this->assertTrue($user->fresh()->email_verified_at !== null, 'メール認証後、email_verified_atが更新されていること');
     }
 
+    /**
+     * @testcase ID 16
+     */
     public function test_unverified_user_can_resend_verification_email(): void
     {
         Notification::fake();
@@ -259,6 +274,9 @@ class AuthenticationTest extends TestCase
         );
     }
 
+    /**
+     * @testcase ID 16
+     */
     public function test_unverified_user_cannot_access_attendance_page(): void
     {
         $user = User::factory()->unverified()->create();
@@ -268,6 +286,9 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('verification.notice'));
     }
 
+    /**
+     * @testcase ID 16
+     */
     public function test_unverified_user_can_access_verification_notice(): void
     {
         $user = User::factory()->unverified()->create();

@@ -13,6 +13,9 @@ class UpdateAttendanceRecordRequest extends FormRequest
         return true;
     }
 
+    /**
+     * 勤怠情報の更新APIにおける入力値を検証する。
+     */
     public function rules(): array
     {
         $attendanceId = $this->route('attendance');
@@ -52,9 +55,6 @@ class UpdateAttendanceRecordRequest extends FormRequest
         ];
     }
 
-    /**
-     * バリデーションエラーメッセージを日本語にする。
-     */
     public function messages(): array
     {
         return [
